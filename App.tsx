@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { StepCard } from './components/StepCard';
 import { TextInput } from './components/TextInput';
@@ -19,6 +18,19 @@ function App() {
   const [appSecret, setAppSecret] = useState(process.env.TIKTOK_APP_SECRET || '');
   const [authCode, setAuthCode] = useState('');
   const [curlCommand, setCurlCommand] = useState('');
+  const [os, setOs] = useState('other');
+
+  // Detect OS on component mount
+  useEffect(() => {
+    const platform = navigator.platform.toLowerCase();
+    if (platform.includes('win')) {
+      setOs('Windows');
+    } else if (platform.includes('mac')) {
+      setOs('macOS');
+    } else if (platform.includes('linux')) {
+      setOs('Linux');
+    }
+  }, []);
 
   // Auto-fill auth code from URL query parameter on page load
   useEffect(() => {
@@ -81,11 +93,16 @@ function App() {
         auth_code: authCode,
         grant_type: 'authorized_code',
       });
-      setCurlCommand(`curl -X GET '${tokenEndpoint}?${params.toString()}'`);
+
+      const isWindows = os === 'Windows';
+      const quote = isWindows ? '"' : "'";
+      const fullUrl = `${tokenEndpoint}?${params.toString()}`;
+
+      setCurlCommand(`curl -X GET ${quote}${fullUrl}${quote}`);
     } else {
         setCurlCommand('');
     }
-  }, [appKey, appSecret, authCode, tokenEndpoint]);
+  }, [appKey, appSecret, authCode, tokenEndpoint, os]);
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
@@ -173,6 +190,7 @@ function App() {
 
           <div>
             <label className="block text-sm font-medium text-gray-700">Generated Terminal Command</label>
+            {os !== 'other' && <p className="mt-1 text-xs text-gray-500">Command tailored for your detected OS ({os}).</p>}
             <CodeBlock content={curlCommand || 'Fill in the details above to generate the command.'} />
           </div>
 
