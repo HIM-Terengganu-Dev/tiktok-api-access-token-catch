@@ -59,8 +59,8 @@ function App() {
           
           // Set the correct token endpoint based on the auth URL's domain
           if (url.hostname.startsWith('services')) {
-            // Old "Open Platform" endpoint
-            setTokenEndpoint('https://auth.tiktokshop.com/api/v2/token/get');
+            // Old "Open Platform" endpoint, now corrected to use the modern domain
+            setTokenEndpoint('https://auth.tiktok-shops.com/api/v2/token/get');
           } else {
             // New "Partner Platform" endpoint
             setTokenEndpoint(`${url.origin}/api/v2/token/get`);
