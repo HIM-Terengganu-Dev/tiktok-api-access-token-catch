@@ -1,0 +1,5 @@
+{
+  "name": "TikTok Shop OAuth Helper",
+  "description": "A developer tool to simplify the TikTok Shop OAuth 2.0 flow for custom apps by generating the authorization URL and the token exchange command.",
+  "requestFramePermissions": []
+}
