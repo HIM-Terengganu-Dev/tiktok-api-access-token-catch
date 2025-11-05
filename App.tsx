@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { StepCard } from './components/StepCard';
 import { TextInput } from './components/TextInput';
 import { CodeBlock } from './components/CodeBlock';
-import { AlertTriangleIcon } from './constants';
+import { AlertTriangleIcon, InformationCircleIcon } from './constants';
 
 function App() {
   // State for Step 1
@@ -175,7 +175,24 @@ function App() {
             <label className="block text-sm font-medium text-gray-700">Generated Terminal Command</label>
             <CodeBlock content={curlCommand || 'Fill in the details above to generate the command.'} />
           </div>
-          <p className="text-sm text-gray-600">The command output will be a JSON object containing your <code className="bg-gray-200 px-1 rounded">access_token</code> and <code className="bg-gray-200 px-1 rounded">refresh_token</code>.</p>
+
+          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mt-6">
+            <div className="flex">
+              <div className="flex-shrink-0">
+                <InformationCircleIcon className="h-5 w-5 text-blue-400" aria-hidden="true" />
+              </div>
+              <div className="ml-3">
+                <h3 className="text-sm font-medium text-blue-800">What's Next? Using Your Tokens</h3>
+                <div className="mt-2 text-sm text-blue-700">
+                  <ol className="list-decimal list-inside space-y-1">
+                    <li><strong>Run the Command:</strong> Copy the command above and run it in your computer's terminal.</li>
+                    <li><strong>Get Your Tokens:</strong> The output will be a JSON response containing your <code className="bg-blue-200 text-blue-900 px-1 rounded-sm">access_token</code> and <code className="bg-blue-200 text-blue-900 px-1 rounded-sm">refresh_token</code>.</li>
+                    <li><strong>Store Securely:</strong> Save these tokens in a safe place (e.g., environment variables). You'll use the <code className="bg-blue-200 text-blue-900 px-1 rounded-sm">access_token</code> to make authenticated API requests to TikTok Shop.</li>
+                  </ol>
+                </div>
+              </div>
+            </div>
+          </div>
         </StepCard>
       </main>
       
