@@ -4,11 +4,12 @@ import { TextInput } from './components/TextInput';
 import { CodeBlock } from './components/CodeBlock';
 import { AlertTriangleIcon, InformationCircleIcon } from './constants';
 
+type Region = 'global' | 'us';
+
 function App() {
   // State for Step 1
   const [authUrlInput, setAuthUrlInput] = useState('');
   const [isUrlValid, setIsUrlValid] = useState(false);
-  const [tokenEndpoint, setTokenEndpoint] = useState('https://auth.tiktok-shops.com/api/v2/token/get');
   const redirectUri = 'https://tiktok-api-access-token-catch.vercel.app';
 
   // State used in both steps
@@ -19,6 +20,10 @@ function App() {
   const [authCode, setAuthCode] = useState('');
   const [curlCommand, setCurlCommand] = useState('');
   const [os, setOs] = useState('other');
+  const [tokenEndpoint, setTokenEndpoint] = useState('https://auth.tiktok-shops.com/api/v2/token/get');
+  const [region, setRegion] = useState<Region>('global');
+  const [showRegionSelector, setShowRegionSelector] = useState(false);
+
 
   // Detect OS on component mount
   useEffect(() => {
@@ -45,44 +50,74 @@ function App() {
   // Extract App Key/Service ID and validate Authorization URL
   useEffect(() => {
     const trimmedUrl = authUrlInput.trim();
+    let endpoint = 'https://auth.tiktok-shops.com/api/v2/token/get'; // Default
+    let shouldShowRegionSelector = false;
+
     if (trimmedUrl) {
       try {
         const url = new URL(trimmedUrl);
-        // Support both new `app_key` and old `service_id`
         const key = url.searchParams.get('app_key') || url.searchParams.get('service_id');
-        // Support both new `tiktok-shops.com` and old `tiktokshop.com` domains
         const hasTiktokDomain = url.hostname.endsWith('tiktok-shops.com') || url.hostname.endsWith('tiktokshop.com');
 
         if (key && hasTiktokDomain) {
           setAppKey(key);
           setIsUrlValid(true);
           
-          // Set the correct token endpoint based on the auth URL's domain
           if (url.hostname.startsWith('services')) {
-            // Old "Open Platform" endpoint, now corrected to use the modern domain
-            setTokenEndpoint('https://auth.tiktok-shops.com/api/v2/token/get');
+            // Old URL format - we don't know the region, so we must ask the user.
+            shouldShowRegionSelector = true;
+            // Endpoint will be set by the other useEffect based on region selection
           } else {
-            // New "Partner Platform" endpoint
-            setTokenEndpoint(`${url.origin}/api/v2/token/get`);
+             // New URL format includes the region in the domain, so we can set it automatically.
+            shouldShowRegionSelector = false;
+            endpoint = `${url.origin}/api/v2/token/get`;
+            if (url.hostname.includes('-us')) {
+                setRegion('us');
+            } else {
+                setRegion('global');
+            }
           }
         } else {
           setAppKey('');
           setIsUrlValid(false);
-          setTokenEndpoint('https://auth.tiktok-shops.com/api/v2/token/get');
         }
       } catch (error) {
         console.warn("Invalid Authorization URL pasted");
         setAppKey('');
         setIsUrlValid(false);
-        setTokenEndpoint('https://auth.tiktok-shops.com/api/v2/token/get');
       }
     } else {
-      // Clear states if the input is empty
       setAppKey('');
       setIsUrlValid(false);
-      setTokenEndpoint('https://auth.tiktok-shops.com/api/v2/token/get');
     }
+    setShowRegionSelector(shouldShowRegionSelector);
   }, [authUrlInput]);
+
+  // Update token endpoint based on region selection, especially for old URLs
+  useEffect(() => {
+    if (showRegionSelector) {
+        if (region === 'us') {
+            setTokenEndpoint('https://auth-us.tiktok-shops.com/api/v2/token/get');
+        } else {
+            setTokenEndpoint('https://auth.tiktok-shops.com/api/v2/token/get');
+        }
+    } else {
+        // For new URLs, the endpoint is derived directly in the other effect
+         const trimmedUrl = authUrlInput.trim();
+        if (trimmedUrl && isUrlValid) {
+            try {
+                const url = new URL(trimmedUrl);
+                if (!url.hostname.startsWith('services')) {
+                    setTokenEndpoint(`${url.origin}/api/v2/token/get`);
+                }
+            } catch (e) {
+                // Fallback
+                setTokenEndpoint('https://auth.tiktok-shops.com/api/v2/token/get');
+            }
+        }
+    }
+  }, [region, showRegionSelector, authUrlInput, isUrlValid]);
+
 
   // Update cURL command whenever Step 2 inputs change
   useEffect(() => {
@@ -151,6 +186,27 @@ function App() {
 
         <StepCard stepNumber={2} title="Exchange Code for Tokens" id="step2">
           <p className="text-sm text-gray-600">After authorizing, TikTok will redirect you back to this page with a temporary <code className="bg-gray-200 text-red-600 px-1 rounded">code</code> in the URL. It will be auto-filled below.</p>
+          
+          {showRegionSelector && (
+            <div className="p-4 bg-orange-50 border border-orange-200 rounded-lg space-y-2">
+                <p className="font-semibold text-sm text-orange-800">Select Your Shop Region</p>
+                <p className="text-xs text-orange-700">Your Authorization URL doesn't specify a region. Selecting the correct one is crucial to avoid an <code className="bg-orange-200 text-orange-900 px-1 rounded-sm">invalid client_key</code> error.</p>
+                <fieldset className="mt-2">
+                    <div className="flex items-center space-x-4">
+                        <div className="flex items-center">
+                            <input id="region-global" name="region" type="radio" checked={region === 'global'} onChange={() => setRegion('global')} className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300" />
+                            <label htmlFor="region-global" className="ml-2 block text-sm font-medium text-gray-700">Global (UK, Southeast Asia, etc.)</label>
+                        </div>
+                        <div className="flex items-center">
+                            <input id="region-us" name="region" type="radio" checked={region === 'us'} onChange={() => setRegion('us')} className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300" />
+                            <label htmlFor="region-us" className="ml-2 block text-sm font-medium text-gray-700">United States</label>
+                        </div>
+                    </div>
+                    <p className="text-xs text-orange-600 mt-2">Select "Global" for shops in regions like the UK, Malaysia, Singapore, and Vietnam.</p>
+                </fieldset>
+            </div>
+          )}
+
           <TextInput
             label="TikTok App Key / Service ID (auto-filled)"
             id="appKey"
