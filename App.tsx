@@ -8,6 +8,8 @@ import { AlertTriangleIcon } from './constants';
 function App() {
   // State for Step 1
   const [authUrlInput, setAuthUrlInput] = useState('');
+  const [isUrlValid, setIsUrlValid] = useState(false);
+  const [tokenEndpoint, setTokenEndpoint] = useState('https://auth.tiktok-shops.com/api/v2/token/get');
   const redirectUri = 'https://tiktok-api-access-token-catch.vercel.app';
 
   // State used in both steps
@@ -28,25 +30,45 @@ function App() {
     }
   }, []);
 
-  // Extract App Key from pasted Authorization URL
+  // Extract App Key/Service ID and validate Authorization URL
   useEffect(() => {
     const trimmedUrl = authUrlInput.trim();
     if (trimmedUrl) {
       try {
         const url = new URL(trimmedUrl);
-        const key = url.searchParams.get('app_key');
-        if (key) {
+        // Support both new `app_key` and old `service_id`
+        const key = url.searchParams.get('app_key') || url.searchParams.get('service_id');
+        // Support both new `tiktok-shops.com` and old `tiktokshop.com` domains
+        const hasTiktokDomain = url.hostname.endsWith('tiktok-shops.com') || url.hostname.endsWith('tiktokshop.com');
+
+        if (key && hasTiktokDomain) {
           setAppKey(key);
+          setIsUrlValid(true);
+          
+          // Set the correct token endpoint based on the auth URL's domain
+          if (url.hostname.startsWith('services')) {
+            // Old "Open Platform" endpoint
+            setTokenEndpoint('https://auth.tiktokshop.com/api/v2/token/get');
+          } else {
+            // New "Partner Platform" endpoint
+            setTokenEndpoint(`${url.origin}/api/v2/token/get`);
+          }
         } else {
           setAppKey('');
+          setIsUrlValid(false);
+          setTokenEndpoint('https://auth.tiktok-shops.com/api/v2/token/get');
         }
       } catch (error) {
         console.warn("Invalid Authorization URL pasted");
         setAppKey('');
+        setIsUrlValid(false);
+        setTokenEndpoint('https://auth.tiktok-shops.com/api/v2/token/get');
       }
     } else {
-      // Clear the app key if the input is empty
+      // Clear states if the input is empty
       setAppKey('');
+      setIsUrlValid(false);
+      setTokenEndpoint('https://auth.tiktok-shops.com/api/v2/token/get');
     }
   }, [authUrlInput]);
 
@@ -59,16 +81,11 @@ function App() {
         auth_code: authCode,
         grant_type: 'authorized_code',
       });
-      setCurlCommand(`curl -X GET 'https://auth.tiktok-shops.com/api/v2/token/get?${params.toString()}'`);
+      setCurlCommand(`curl -X GET '${tokenEndpoint}?${params.toString()}'`);
     } else {
         setCurlCommand('');
     }
-  }, [appKey, appSecret, authCode]);
-  
-  const trimmedAuthUrl = authUrlInput.trim();
-  // Regex to validate global and region-specific TikTok auth URLs (e.g., auth.tiktok-shops.com, auth-us.tiktok-shops.com)
-  const tiktokAuthUrlRegex = /^https:\/\/auth(-[a-z]{2,})?\.tiktok-shops\.com/;
-  const isUrlValid = tiktokAuthUrlRegex.test(trimmedAuthUrl);
+  }, [appKey, appSecret, authCode, tokenEndpoint]);
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
@@ -95,11 +112,15 @@ function App() {
             id="authUrl"
             value={authUrlInput}
             onChange={(e) => setAuthUrlInput(e.target.value)}
-            placeholder="https://auth.tiktok-shops.com/oauth/authorize?..."
-            description="The full URL provided by the TikTok Partner Center."
+            placeholder="https://auth.tiktok-shops.com/... or https://services.tiktokshop.com/..."
+            description={
+              !isUrlValid && authUrlInput
+                ? 'Please paste a valid TikTok Shop URL containing an app_key or service_id.'
+                : 'The full URL provided by the TikTok Partner Center.'
+            }
           />
           <div>
-             <a href={isUrlValid ? trimmedAuthUrl : '#'}
+             <a href={isUrlValid ? authUrlInput.trim() : '#'}
                target="_blank" 
                rel="noopener noreferrer" 
                className={`mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white transition-colors ${isUrlValid ? 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500' : 'bg-gray-400 cursor-not-allowed'}`}
@@ -114,7 +135,7 @@ function App() {
         <StepCard stepNumber={2} title="Exchange Code for Tokens" id="step2">
           <p className="text-sm text-gray-600">After authorizing, TikTok will redirect you back to this page with a temporary <code className="bg-gray-200 text-red-600 px-1 rounded">code</code> in the URL. It will be auto-filled below.</p>
           <TextInput
-            label="TikTok App Key (auto-filled)"
+            label="TikTok App Key / Service ID (auto-filled)"
             id="appKey"
             value={appKey}
             onChange={() => {}} // No-op for readOnly field
