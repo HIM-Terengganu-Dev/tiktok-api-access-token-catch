@@ -30,19 +30,23 @@ function App() {
 
   // Extract App Key from pasted Authorization URL
   useEffect(() => {
-    if (authUrlInput) {
+    const trimmedUrl = authUrlInput.trim();
+    if (trimmedUrl) {
       try {
-        const url = new URL(authUrlInput);
+        const url = new URL(trimmedUrl);
         const key = url.searchParams.get('app_key');
         if (key) {
           setAppKey(key);
         } else {
-          setAppKey(''); // Clear if URL is valid but doesn't contain app_key
+          setAppKey('');
         }
       } catch (error) {
         console.warn("Invalid Authorization URL pasted");
-        setAppKey(''); // Clear if URL is invalid
+        setAppKey('');
       }
+    } else {
+      // Clear the app key if the input is empty
+      setAppKey('');
     }
   }, [authUrlInput]);
 
@@ -61,7 +65,10 @@ function App() {
     }
   }, [appKey, appSecret, authCode]);
   
-  const isUrlValid = authUrlInput && authUrlInput.startsWith('https://auth.tiktok-shops.com');
+  const trimmedAuthUrl = authUrlInput.trim();
+  // Regex to validate global and region-specific TikTok auth URLs (e.g., auth.tiktok-shops.com, auth-us.tiktok-shops.com)
+  const tiktokAuthUrlRegex = /^https:\/\/auth(-[a-z]{2,})?\.tiktok-shops\.com/;
+  const isUrlValid = tiktokAuthUrlRegex.test(trimmedAuthUrl);
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
@@ -92,10 +99,10 @@ function App() {
             description="The full URL provided by the TikTok Partner Center."
           />
           <div>
-             <a href={isUrlValid ? authUrlInput : '#'}
+             <a href={isUrlValid ? trimmedAuthUrl : '#'}
                target="_blank" 
                rel="noopener noreferrer" 
-               className={`mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${isUrlValid ? 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500' : 'bg-gray-400 cursor-not-allowed'}`}
+               className={`mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white transition-colors ${isUrlValid ? 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500' : 'bg-gray-400 cursor-not-allowed'}`}
                aria-disabled={!isUrlValid}
                onClick={(e) => !isUrlValid && e.preventDefault()}
             >
