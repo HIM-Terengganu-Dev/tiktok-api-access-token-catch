@@ -7,52 +7,44 @@ import { AlertTriangleIcon } from './constants';
 
 function App() {
   // State for Step 1
-  const [appKey, setAppKey] = useState(process.env.TIKTOK_APP_KEY || '');
-  const [redirectUri, setRedirectUri] = useState('https://your-vercel-domain.vercel.app/api/auth/callback');
-  const [scopes, setScopes] = useState('order_management,product_management');
-  const [authState, setAuthState] = useState('');
-  const [authUrl, setAuthUrl] = useState('');
+  const [authUrlInput, setAuthUrlInput] = useState('');
+  const redirectUri = 'https://tiktok-api-access-token-catch.vercel.app';
 
+  // State used in both steps
+  const [appKey, setAppKey] = useState(process.env.TIKTOK_APP_KEY || '');
+  
   // State for Step 2
   const [appSecret, setAppSecret] = useState(process.env.TIKTOK_APP_SECRET || '');
   const [authCode, setAuthCode] = useState('');
   const [curlCommand, setCurlCommand] = useState('');
 
-  // Generate a unique state value on component mount
-  useEffect(() => {
-    setAuthState(crypto.randomUUID());
-  }, []);
-  
   // Auto-fill auth code from URL query parameter on page load
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
     const code = urlParams.get('code');
-    const state = urlParams.get('state');
     if (code) {
       setAuthCode(code);
-      // Optional: Compare state with stored state for security
-      console.log("Received state:", state);
-      // Scroll to Step 2 for better UX
       document.getElementById('step2')?.scrollIntoView({ behavior: 'smooth' });
     }
   }, []);
 
-
-  // Update Authorization URL whenever Step 1 inputs change
+  // Extract App Key from pasted Authorization URL
   useEffect(() => {
-    if (appKey && authState && redirectUri && scopes) {
-        const params = new URLSearchParams({
-        app_key: appKey,
-        state: authState,
-        redirect_uri: redirectUri,
-        scope: scopes,
-        response_type: 'code',
-      });
-      setAuthUrl(`https://auth.tiktok-shops.com/oauth/authorize?${params.toString()}`);
-    } else {
-        setAuthUrl('');
+    if (authUrlInput) {
+      try {
+        const url = new URL(authUrlInput);
+        const key = url.searchParams.get('app_key');
+        if (key) {
+          setAppKey(key);
+        } else {
+          setAppKey(''); // Clear if URL is valid but doesn't contain app_key
+        }
+      } catch (error) {
+        console.warn("Invalid Authorization URL pasted");
+        setAppKey(''); // Clear if URL is invalid
+      }
     }
-  }, [appKey, redirectUri, scopes, authState]);
+  }, [authUrlInput]);
 
   // Update cURL command whenever Step 2 inputs change
   useEffect(() => {
@@ -68,6 +60,8 @@ function App() {
         setCurlCommand('');
     }
   }, [appKey, appSecret, authCode]);
+  
+  const isUrlValid = authUrlInput && authUrlInput.startsWith('https://auth.tiktok-shops.com');
 
   return (
     <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
@@ -79,49 +73,53 @@ function App() {
       </header>
 
       <main className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8 space-y-8">
-        <StepCard stepNumber={1} title="Generate Authorization URL">
+        <StepCard stepNumber={1} title="Authorize Your Application">
+            <div className="space-y-4 text-sm text-gray-700">
+                <p>To get your authorization <code className="bg-gray-200 text-red-600 px-1 rounded">code</code>, you need to configure your app's **Redirect URI** in the TikTok Shop Partner Center.</p>
+                <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-lg">
+                    <p className="font-semibold text-indigo-800">Your Redirect URI is:</p>
+                    <p className="text-xs text-gray-500 mt-1 mb-2">Copy this URL and paste it into the "Redirect URI" field in your app settings on the TikTok Shop Partner Center.</p>
+                    <CodeBlock content={redirectUri} />
+                </div>
+                 <p>Once you save the Redirect URI, the Partner Center will provide you with an **Authorization URL**. Paste that full URL below.</p>
+            </div>
           <TextInput
-            label="TikTok App Key"
-            id="appKey"
-            value={appKey}
-            onChange={(e) => setAppKey(e.target.value)}
-            placeholder="Enter your TikTok App Key"
-          />
-          <TextInput
-            label="Redirect URI"
-            id="redirectUri"
-            value={redirectUri}
-            onChange={(e) => setRedirectUri(e.target.value)}
-            placeholder="e.g., https://your-domain.com/callback"
-            description="Must exactly match the one in your TikTok Shop Partner Center."
-          />
-          <TextInput
-            label="Scopes"
-            id="scopes"
-            value={scopes}
-            onChange={(e) => setScopes(e.target.value)}
-            placeholder="e.g., order_management,product_management"
-            description="Comma-separated list of required permissions."
+            label="Authorization URL from Partner Center"
+            id="authUrl"
+            value={authUrlInput}
+            onChange={(e) => setAuthUrlInput(e.target.value)}
+            placeholder="https://auth.tiktok-shops.com/oauth/authorize?..."
+            description="The full URL provided by the TikTok Partner Center."
           />
           <div>
-            <label className="block text-sm font-medium text-gray-700">Generated Authorization URL</label>
-            <CodeBlock content={authUrl || 'Fill in the details above to generate the URL.'} />
-            {authUrl && (
-                <a href={authUrl} target="_blank" rel="noopener noreferrer" className="mt-4 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
-                    Open TikTok Authorization Page
-                </a>
-            )}
+             <a href={isUrlValid ? authUrlInput : '#'}
+               target="_blank" 
+               rel="noopener noreferrer" 
+               className={`mt-2 inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white ${isUrlValid ? 'bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500' : 'bg-gray-400 cursor-not-allowed'}`}
+               aria-disabled={!isUrlValid}
+               onClick={(e) => !isUrlValid && e.preventDefault()}
+            >
+                Open TikTok Authorization Page
+            </a>
           </div>
         </StepCard>
 
         <StepCard stepNumber={2} title="Exchange Code for Tokens" id="step2">
-          <p className="text-sm text-gray-600">After authorizing, TikTok will redirect you to your Redirect URI with a temporary <code className="bg-gray-200 text-red-600 px-1 rounded">code</code> in the URL. Paste it below.</p>
+          <p className="text-sm text-gray-600">After authorizing, TikTok will redirect you back to this page with a temporary <code className="bg-gray-200 text-red-600 px-1 rounded">code</code> in the URL. It will be auto-filled below.</p>
           <TextInput
-            label="Authorization Code"
+            label="TikTok App Key (auto-filled)"
+            id="appKey"
+            value={appKey}
+            onChange={() => {}} // No-op for readOnly field
+            placeholder="Auto-filled from Authorization URL in Step 1"
+            readOnly={true}
+          />
+          <TextInput
+            label="Authorization Code (auto-filled)"
             id="authCode"
             value={authCode}
             onChange={(e) => setAuthCode(e.target.value)}
-            placeholder="Paste the code from the redirect URL"
+            placeholder="Auto-filled from redirect URL"
           />
           <TextInput
             label="TikTok App Secret"

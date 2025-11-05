@@ -2,7 +2,7 @@
 import React from 'react';
 import type { TextInputProps } from '../types';
 
-export const TextInput: React.FC<TextInputProps> = ({ label, id, value, onChange, placeholder, type = 'text', description }) => {
+export const TextInput: React.FC<TextInputProps> = ({ label, id, value, onChange, placeholder, type = 'text', description, readOnly = false }) => {
   return (
     <div className="w-full">
       <label htmlFor={id} className="block text-sm font-medium text-gray-700">
@@ -13,11 +13,12 @@ export const TextInput: React.FC<TextInputProps> = ({ label, id, value, onChange
           type={type}
           name={id}
           id={id}
-          className="block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+          className={`block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm ${readOnly ? 'bg-gray-100 cursor-not-allowed' : ''}`}
           value={value}
           onChange={onChange}
           placeholder={placeholder}
           autoComplete="off"
+          readOnly={readOnly}
         />
       </div>
       {description && <p className="mt-2 text-sm text-gray-500">{description}</p>}

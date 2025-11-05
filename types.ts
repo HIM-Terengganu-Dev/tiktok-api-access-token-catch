@@ -9,6 +9,7 @@ export interface TextInputProps {
   placeholder?: string;
   type?: 'text' | 'password' | 'email';
   description?: string;
+  readOnly?: boolean;
 }
 
 export interface CodeBlockProps {
